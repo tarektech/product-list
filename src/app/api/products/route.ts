@@ -22,16 +22,15 @@ interface ProductWithPrice extends Product {
 
 async function fetchGoldPrice(): Promise<number> {
   try {
+    // Use absolute URL only in development, relative in production
+    const baseUrl =
+      process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : process.env.NEXT_PUBLIC_API_URL;
+
     // Fetch from our gold price endpoint
-    const response = await fetch(
-      `${
-        process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      }/api/gold-price`,
-      {
-        cache: 'no-store',
-        next: { revalidate: 0 },
-      }
-    );
+    const response = await fetch(`${baseUrl}/api/gold-price`, {
+      cache: 'no-store',
+      next: { revalidate: 0 },
+    });
 
     if (response.ok) {
       const data = await response.json();
@@ -45,11 +44,7 @@ async function fetchGoldPrice(): Promise<number> {
   return 85.0;
 }
 
-function calculatePrice(
-  popularityScore: number,
-  weight: number,
-  goldPrice: number
-): number {
+function calculatePrice(popularityScore: number, weight: number, goldPrice: number): number {
   // Price = (popularityScore + 1) * weight * goldPrice
   return (popularityScore + 1) * weight * goldPrice;
 }
@@ -73,17 +68,11 @@ export async function GET(request: Request) {
     const goldPrice = await fetchGoldPrice();
 
     // Calculate prices for all products
-    let products: ProductWithPrice[] = (productsData as Product[]).map(
-      (product) => ({
-        ...product,
-        price: calculatePrice(
-          product.popularityScore,
-          product.weight,
-          goldPrice
-        ),
-        rating: calculateRating(product.popularityScore),
-      })
-    );
+    let products: ProductWithPrice[] = (productsData as Product[]).map((product) => ({
+      ...product,
+      price: calculatePrice(product.popularityScore, product.weight, goldPrice),
+      rating: calculateRating(product.popularityScore),
+    }));
 
     // Apply filters if provided
     if (minPrice) {
@@ -95,15 +84,11 @@ export async function GET(request: Request) {
     }
 
     if (minPopularity) {
-      products = products.filter(
-        (p) => p.popularityScore >= parseFloat(minPopularity)
-      );
+      products = products.filter((p) => p.popularityScore >= parseFloat(minPopularity));
     }
 
     if (maxPopularity) {
-      products = products.filter(
-        (p) => p.popularityScore <= parseFloat(maxPopularity)
-      );
+      products = products.filter((p) => p.popularityScore <= parseFloat(maxPopularity));
     }
 
     return NextResponse.json({
@@ -120,9 +105,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error in products API:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch products' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
   }
 }

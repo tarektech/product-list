@@ -2,7 +2,9 @@ import ProductsClient from '@/components/ProductsClient';
 import { ProductsResponse } from '@/utils/types';
 
 async function getProducts(): Promise<ProductsResponse> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  // Use absolute URL only in development, relative in production
+  const baseUrl =
+    process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : process.env.NEXT_PUBLIC_API_URL || '';
 
   try {
     const res = await fetch(`${baseUrl}/api/products`, {
